@@ -47,7 +47,15 @@
 <script src="../src/misc/sigma.misc.drawHovers.js"></script>
 <!-- END SIGMA IMPORTS -->
 <script src="../plugins/sigma.parsers.json/sigma.parsers.json.js"></script>
-<script src="../plugins/sigma.neo4j.cypher/sigma.neo4j.cypher.js"></script>
+<script src="./sigma.neo4j.cypher.js"></script>
+
+<script src="../plugins/sigma.layout.forceAtlas2/worker.js"></script>
+<script src="../plugins/sigma.layout.forceAtlas2/supervisor.js"></script>
+<script src="../plugins/sigma.plugins.animate/sigma.plugins.animate.js"></script>
+<script src="./sigma.layout.fruchtermanReingold.js"></script>
+<script src="../plugins/sigma.plugins.dragNodes/sigma.plugins.dragNodes.js"></script>
+
+
 
 <div id="container">
     <style>
@@ -71,19 +79,103 @@
      *
      * It based on the json parser (that's why its must be loaded).
      */
+    var sig = new sigma({
+                renderer : { 
+                    container: 'graph-container' ,
+                    type: 'canvas'
+                } ,
+                settings: {
+                    minNodeSize: 3,
+                    maxNodeSize: 20,
+                    enableEdgeHovering: true,
+                    edgeHoverSizeRatio: 2
+                }
+            });
+
+    // Initialize the dragNodes plugin:
+    var dragListener = sigma.plugins.dragNodes(sig, sig.renderers[0]);
+
+    dragListener.bind('startdrag', function(event) {
+      console.log(event);
+    });
+    dragListener.bind('drag', function(event) {
+      console.log(event);
+    });
+    dragListener.bind('drop', function(event) {
+      console.log(event);
+    });
+    dragListener.bind('dragend', function(event) {
+      console.log(event);
+      //sigma.layouts.fruchtermanReingold.start(sig);
+
+    });
+
     sigma.neo4j.cypher(
-            { url: 'http://localhost:7474', user: 'neo4j', password: 'admin' },
+            { url: 'http://localhost:7474', user: 'neo4j', password: 'password' },
             'MATCH (n) OPTIONAL MATCH (n)-[r]->(m) RETURN n,r,m LIMIT 100',
-            { container: 'graph-container' } ,
+            sig,
             function(s) {
                 console.log('Number of nodes :'+ s.graph.nodes().length);
                 console.log('Number of edges :'+ s.graph.edges().length);
+                
+                //s.startForceAtlas2({worker: true, barnesHutOptimize: false});
+                // Start the algorithm:
+                
+/*
+                var listener = sigma.layouts.fruchtermanReingold.configure(s, 
+                    {autoArea:true, iterations:2000}); */
+                // Bind all events:
+                /*listener.bind('start stop interpolate', function(event) {
+                  console.log(event.type);
+                });*/
+
+                //sigma.layouts.fruchtermanReingold.start(s);
+
+                var colors = [
+                  '#617db4',
+                  '#668f3c',
+                  '#c6583e',
+                  '#b956af'
+                ];
+                var degrees = {};
+                console.log("edge:" + s.graph.edges().length);
+                    
+                s.graph.edges().forEach(function(e) {
+                    console.log("edge type:" + e.type);
+                    e.type = 'curve';
+                    if(degrees[e.source] == null) {
+                        degrees[e.source] = 1;
+                    } else {
+                        degrees[e.source] ++;
+                    }
+                    if(degrees[e.target] == null) {
+                        degrees[e.target] = 1;
+                    } else {
+                        degrees[e.target] ++;
+                    }
+                });
+                var totalDegree = s.graph.edges().length * 2;
+                s.graph.nodes().forEach(function(n) {
+                    n.degree = degrees[n.id];
+                    console.log("degree:" + n.degree);
+                    //console.log("n.size:" + n.size);
+                    //console.log("n.color:" + n.color);
+                    //console.log("node:" + Object.getOwnPropertyNames(n));
+                    //n.size = 20;
+                    n.size = Math.sqrt(n.degree / totalDegree);
+                    //console.log("size:" + n.size);
+                    n.color = colors[Math.floor(Math.random() * colors.length)];
+                });
+                //console.log("settings:" + s.settings);
+                s.refresh();
+
+                s.startForceAtlas2({worker: false, barnesHutOptimize: false});
             }
     );
 
     // Calling neo4j to get all its relationship type
     sigma.neo4j.getTypes(
-            { url: 'http://localhost:7474', user:'neo4j', password:'admin' },
+            { url: 'http://localhost:7474', user:'neo4j', password:'password' },
             function(types) {
                 console.log("Relationship types" + types);
             }
@@ -91,7 +183,7 @@
 
     // Calling neo4j to get all its node label
     sigma.neo4j.getLabels(
-            { url: 'http://localhost:7474', user:'neo4j', password:'admin' },
+            { url: 'http://localhost:7474', user:'neo4j', password:'password' },
             function(labels) {
                 console.log("Node labels" + labels);
             }
