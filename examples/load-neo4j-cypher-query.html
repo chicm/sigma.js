@@ -81,7 +81,7 @@
      */
     var sig = new sigma({
                 renderer : { 
-                    container: 'graph-container' ,
+                    container: 'graph-container',
                     type: 'canvas'
                 } ,
                 settings: {
@@ -107,6 +107,8 @@
     dragListener.bind('dragend', function(event) {
       console.log(event);
       //sigma.layouts.fruchtermanReingold.start(sig);
+      //sig.startForceAtlas2({worker: true, barnesHutOptimize: false});
+                
 
     });
 
@@ -160,16 +162,21 @@
                     console.log("degree:" + n.degree);
                     //console.log("n.size:" + n.size);
                     //console.log("n.color:" + n.color);
-                    //console.log("node:" + Object.getOwnPropertyNames(n));
+                    console.log("node:" + Object.getOwnPropertyNames(n));
+                    console.log("label:" + n.label);
+                    console.log("neo4jlabel" + n.neo4j_labels);
+                    console.log("data:" + n.neo4j_data);
                     //n.size = 20;
                     n.size = Math.sqrt(n.degree / totalDegree);
+                    n.label = n.neo4j_labels[1];
                     //console.log("size:" + n.size);
                     n.color = colors[Math.floor(Math.random() * colors.length)];
                 });
                 //console.log("settings:" + s.settings);
                 s.refresh();
 
-                s.startForceAtlas2({worker: false, barnesHutOptimize: false});
+                s.startForceAtlas2({worker: true, barnesHutOptimize: false});
+                setTimeout("stopAtlas(sig)", 3000)
             }
     );
 
@@ -188,4 +195,9 @@
                 console.log("Node labels" + labels);
             }
     );
+
+    function stopAtlas(sig) {
+        sig.stopForceAtlas2();
+        console.log("stopped");
+    }
 </script>
