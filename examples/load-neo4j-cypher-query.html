@@ -47,13 +47,14 @@
 <script src="../src/misc/sigma.misc.drawHovers.js"></script>
 <!-- END SIGMA IMPORTS -->
 <script src="../plugins/sigma.parsers.json/sigma.parsers.json.js"></script>
-<script src="./sigma.neo4j.cypher.js"></script>
+<script src="../plugins/sigma.neo4j.cypher/sigma.neo4j.cypher.js"></script>
 
 <script src="../plugins/sigma.layout.forceAtlas2/worker.js"></script>
 <script src="../plugins/sigma.layout.forceAtlas2/supervisor.js"></script>
 <script src="../plugins/sigma.plugins.animate/sigma.plugins.animate.js"></script>
-<script src="./sigma.layout.fruchtermanReingold.js"></script>
 <script src="../plugins/sigma.plugins.dragNodes/sigma.plugins.dragNodes.js"></script>
+
+<script src="./sigma.layout.fruchtermanReingold.js"></script>
 
 
 
@@ -79,6 +80,11 @@
      *
      * It based on the json parser (that's why its must be loaded).
      */
+    var algo = "forceAtlas2";
+    var neo4j_url = 'http://localhost:7474';
+    var neo4j_user = 'neo4j';
+    var neo4j_pwd = 'password';
+
     var sig = new sigma({
                 renderer : { 
                     container: 'graph-container',
@@ -95,43 +101,17 @@
     // Initialize the dragNodes plugin:
     var dragListener = sigma.plugins.dragNodes(sig, sig.renderers[0]);
 
-    dragListener.bind('startdrag', function(event) {
-      console.log(event);
-    });
-    dragListener.bind('drag', function(event) {
-      console.log(event);
-    });
-    dragListener.bind('drop', function(event) {
-      console.log(event);
-    });
     dragListener.bind('dragend', function(event) {
       console.log(event);
-      //sigma.layouts.fruchtermanReingold.start(sig);
-      //sig.startForceAtlas2({worker: true, barnesHutOptimize: false});
-                
-
     });
 
     sigma.neo4j.cypher(
-            { url: 'http://localhost:7474', user: 'neo4j', password: 'password' },
+            { url: neo4j_url, user: neo4j_user, password: neo4j_pwd },
             'MATCH (n) OPTIONAL MATCH (n)-[r]->(m) RETURN n,r,m LIMIT 100',
             sig,
             function(s) {
                 console.log('Number of nodes :'+ s.graph.nodes().length);
                 console.log('Number of edges :'+ s.graph.edges().length);
-                
-                //s.startForceAtlas2({worker: true, barnesHutOptimize: false});
-                // Start the algorithm:
-                
-/*
-                var listener = sigma.layouts.fruchtermanReingold.configure(s, 
-                    {autoArea:true, iterations:2000}); */
-                // Bind all events:
-                /*listener.bind('start stop interpolate', function(event) {
-                  console.log(event.type);
-                });*/
-
-                //sigma.layouts.fruchtermanReingold.start(s);
 
                 var colors = [
                   '#617db4',
@@ -143,7 +123,6 @@
                 console.log("edge:" + s.graph.edges().length);
                     
                 s.graph.edges().forEach(function(e) {
-                    console.log("edge type:" + e.type);
                     e.type = 'curve';
                     if(degrees[e.source] == null) {
                         degrees[e.source] = 1;
@@ -158,31 +137,34 @@
                 });
                 var totalDegree = s.graph.edges().length * 2;
                 s.graph.nodes().forEach(function(n) {
-                    n.degree = degrees[n.id];
-                    console.log("degree:" + n.degree);
-                    //console.log("n.size:" + n.size);
-                    //console.log("n.color:" + n.color);
-                    console.log("node:" + Object.getOwnPropertyNames(n));
-                    console.log("label:" + n.label);
-                    console.log("neo4jlabel" + n.neo4j_labels);
-                    console.log("data:" + n.neo4j_data);
-                    //n.size = 20;
-                    n.size = Math.sqrt(n.degree / totalDegree);
+                    //n.degree = degrees[n.id];
+                    n.size = Math.sqrt(degrees[n.id] / totalDegree);
                     n.label = n.neo4j_labels[1];
-                    //console.log("size:" + n.size);
                     n.color = colors[Math.floor(Math.random() * colors.length)];
                 });
-                //console.log("settings:" + s.settings);
                 s.refresh();
 
-                s.startForceAtlas2({worker: true, barnesHutOptimize: false});
-                setTimeout("stopAtlas(sig)", 3000)
+                if(algo == "forceAtlas2") {
+                    console.log("algo: forceAtlas2");
+                    s.startForceAtlas2({worker: false, barnesHutOptimize: false});
+                    setTimeout('stopForceAtlas2(sig)', 5000);
+                } else {
+                    console.log("algo: fruchtermanReingold")
+                    var listener = sigma.layouts.fruchtermanReingold.configure(s, 
+                        {autoArea:true, iterations:2000}); 
+                    // Bind all events:
+                    listener.bind('start stop interpolate', function(event) {
+                      console.log(event.type);
+                    });
+
+                    sigma.layouts.fruchtermanReingold.start(s);
+                }
             }
     );
 
     // Calling neo4j to get all its relationship type
     sigma.neo4j.getTypes(
-            { url: 'http://localhost:7474', user:'neo4j', password:'password' },
+            { url: neo4j_url, user: neo4j_user, password: neo4j_pwd },
             function(types) {
                 console.log("Relationship types" + types);
             }
@@ -190,14 +172,15 @@
 
     // Calling neo4j to get all its node label
     sigma.neo4j.getLabels(
-            { url: 'http://localhost:7474', user:'neo4j', password:'password' },
+            { url: neo4j_url, user: neo4j_user, password: neo4j_pwd },
             function(labels) {
                 console.log("Node labels" + labels);
             }
     );
 
-    function stopAtlas(sig) {
+    function stopForceAtlas2(sig) {
+        console.log("forceAtlas2 stopped");
         sig.stopForceAtlas2();
-        console.log("stopped");
     }
+
 </script>
